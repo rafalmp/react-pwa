@@ -1,32 +1,52 @@
 import React, { Component } from 'react';
+import styled from "styled-components";
 import Link from "../components/Link/Link";
 import List from "../components/List/List";
-import './Profile.css';
+
+const ProfileWrapper = styled.div`
+  width: 50%;
+  margin: 10px auto;
+`;
+
+const Avatar = styled.img`
+  width: 150px;
+`;
 
 class Profile extends Component {
   constructor(props) {
     super(props);
     this.state = {
       data: {},
+      repositories: [],
       loading: true,
+      error: '',
     }
   }
 
   async componentDidMount() {
-    const profile = await fetch('https://api.github.com/users/rafalmp').then(response => response.json())
-    if (profile) {
+    try {
+      const profile = await fetch('https://api.github.com/users/rafalmp').then(response => response.json())
+      if (profile) {
+        const repos = await fetch(profile.repos_url).then(response => response.json())
+        this.setState({
+          data: profile,
+          repositories: repos,
+          loading: false,
+        });
+      }
+    } catch (e) {
       this.setState({
-        data: profile,
         loading: false,
+        error: e.message,
       });
     }
   }
 
   render() {
-    const { data, loading } = this.state;
+    const { data, repositories, loading, error } = this.state;
 
-    if (loading) {
-      return <div>Loading...</div>
+    if (loading || error) {
+      return <div>{loading ? 'Loading...' : error}</div>
     }
 
     const items = [
@@ -37,13 +57,19 @@ class Profile extends Component {
       { label: 'Location', value: data.location },
       { label: 'Email', value: data.email },
       { label: 'Bio', value: data.bio },
-    ]
+    ];
+
+    const projects = repositories.map(repository => ({
+      label: repository.name,
+      value: <Link url={repository.html_url} title={'Github URL'} />
+    }));
 
     return (
-      <div className={'Profile-container'}>
-        <img className={'Profile-avatar'} src={data.avatar_url} alt={'avatar'} />
-        <List items={items} />
-      </div>
+      <ProfileWrapper>
+        <Avatar src={data.avatar_url} alt={'avatar'} />
+        <List title={'Profile'} items={items} />
+        <List title={'Projects'} items={projects} />
+      </ProfileWrapper>
     );
   }
 }
